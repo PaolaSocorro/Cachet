@@ -70,9 +70,16 @@ final class CreateComponentCommand
     /**
      * JSON meta data for the component.
      *
-     * @var string|null
+     * @var array|null
      */
     public $meta;
+
+    /**
+     * Tags string.
+     *
+     * @var string
+     */
+    public $tags;
 
     /**
      * The validation rules.
@@ -81,13 +88,14 @@ final class CreateComponentCommand
      */
     public $rules = [
         'name'        => 'required|string',
-        'description' => 'required|string',
+        'description' => 'nullable|string',
         'status'      => 'required|int|min:0|max:4',
         'link'        => 'nullable|url',
         'order'       => 'nullable|int',
         'group_id'    => 'nullable|int',
         'enabled'     => 'nullable|bool',
-        'meta'        => 'nullable|string',
+        'meta'        => 'nullable|array',
+        'tags'        => 'nullable|string',
     ];
 
     /**
@@ -100,11 +108,12 @@ final class CreateComponentCommand
      * @param int         $order
      * @param int         $group_id
      * @param bool        $enabled
-     * @param string|null $meta
+     * @param array|null  $meta
+     * @param string|null $tags
      *
      * @return void
      */
-    public function __construct($name, $description, $status, $link, $order, $group_id, $enabled, $meta)
+    public function __construct($name, $description, $status, $link, $order, $group_id, $enabled, $meta, $tags = null)
     {
         $this->name = $name;
         $this->description = $description;
@@ -114,5 +123,6 @@ final class CreateComponentCommand
         $this->group_id = $group_id;
         $this->enabled = $enabled;
         $this->meta = $meta;
+        $this->tags = $tags;
     }
 }

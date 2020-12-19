@@ -12,21 +12,23 @@
 namespace CachetHQ\Cachet\Models;
 
 use AltThree\Validator\ValidatingTrait;
+use CachetHQ\Cachet\Models\Traits\HasMeta;
 use CachetHQ\Cachet\Models\Traits\SearchableTrait;
 use CachetHQ\Cachet\Models\Traits\SortableTrait;
 use CachetHQ\Cachet\Presenters\SchedulePresenter;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use McCool\LaravelAutoPresenter\HasPresenter;
 
-/**
- * This is the schedule class.
- *
- * @author James Brooks <james@alt-three.com>
- */
 class Schedule extends Model implements HasPresenter
 {
-    use SearchableTrait, SortableTrait, ValidatingTrait;
+    use HasMeta;
+    use SearchableTrait;
+    use SoftDeletes;
+    use SortableTrait;
+    use ValidatingTrait;
 
     /**
      * The upcoming status.
@@ -68,8 +70,8 @@ class Schedule extends Model implements HasPresenter
         'name'         => 'string',
         'message'      => 'string',
         'status'       => 'int',
-        'scheduled_at' => 'date',
-        'completed_at' => 'date',
+        'scheduled_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     /**
@@ -132,30 +134,6 @@ class Schedule extends Model implements HasPresenter
     protected $with = ['components'];
 
     /**
-     * Scopes schedules to those in the future.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     *
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeFutureSchedules($query)
-    {
-        return $query->whereIn('status', [self::UPCOMING, self::IN_PROGRESS])->where('scheduled_at', '>=', Carbon::now());
-    }
-
-    /**
-     * Scopes schedules to those in the past.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     *
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopePastSchedules($query)
-    {
-        return $query->where('status', '<', self::COMPLETE)->where('scheduled_at', '<=', Carbon::now());
-    }
-
-    /**
      * Get the components relation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
@@ -163,6 +141,70 @@ class Schedule extends Model implements HasPresenter
     public function components()
     {
         return $this->hasMany(ScheduleComponent::class);
+    }
+
+    /**
+     * Scope schedules that are uncompleted.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeUncompleted(Builder $query)
+    {
+        return $query->whereIn('status', [self::UPCOMING, self::IN_PROGRESS])->where(function (Builder $query) {
+            return $query->whereNull('completed_at');
+        });
+    }
+
+    /**
+     * Scope schedules that are in progress.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeInProgress(Builder $query)
+    {
+        return $query->where('scheduled_at', '<=', Carbon::now())->where('status', '<>', self::COMPLETE)->where(function ($query) {
+            $query->whereNull('completed_at');
+        });
+    }
+
+    /**
+     * Scopes schedules to those in the future.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeScheduledInFuture($query)
+    {
+        return $query->whereIn('status', [self::UPCOMING, self::IN_PROGRESS])->where('scheduled_at', '>=', Carbon::now());
+    }
+
+    /**
+     * Scopes schedules to those scheduled in the past.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeScheduledInPast($query)
+    {
+        return $query->whereIn('status', [self::UPCOMING, self::IN_PROGRESS])->where('scheduled_at', '<=', Carbon::now());
+    }
+
+    /**
+     * Scopes schedules to those completed in the past.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeCompletedInPast($query)
+    {
+        return $query->where('status', '=', self::COMPLETE)->where('completed_at', '<=', Carbon::now());
     }
 
     /**
